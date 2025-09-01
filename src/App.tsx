@@ -8,7 +8,9 @@ import { Placeholder } from './pages/Placeholder';
 import { Dashboards } from './pages/Dashboards';
 import { PitchDemo } from './pages/PitchDemo';
 import { SettingsApp } from './pages/developer-tools/SettingsApp';
-import { AppBuildManagement } from './pages/developer-tools/AppBuildManagement';
+import { MyApps } from './pages/MyApps';
+import { JointVenture } from './pages/JointVenture';
+
 import { DeveloperWorkflows } from './pages/developer-tools/DeveloperWorkflows';
 import { AppArchitecture } from './pages/developer-tools/AppArchitecture';
 import { DatabaseManagement } from './pages/developer-tools/DatabaseManagement';
@@ -17,6 +19,11 @@ import { ToolstackOverview } from './pages/developer-tools/ToolstackOverview';
 import { UserFlowPipelines } from './pages/developer-tools/UserFlowPipelines';
 import { AppUserGuides } from './pages/developer-tools/AppUserGuides';
 import { AppDocumentation } from './pages/developer-tools/AppDocumentation';
+import { GitManagement } from './pages/developer-tools/GitManagement';
+import { AIDocumentationWorkflow } from './pages/developer-tools/AIDocumentationWorkflow';
+import { DynamicDocumentation } from './pages/developer-tools/DynamicDocumentation';
+import { AppUpdatesTimeline } from './pages/developer-tools/AppUpdatesTimeline';
+import { BrainNFTConnection } from './pages/developer-tools/BrainNFTConnection';
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -31,17 +38,16 @@ function App() {
       case 'story':
         return <Placeholder title="My Story & Roadmap" description="Personal journey and development roadmap coming soon." />;
       case 'apps':
-        return <Placeholder title="Apps" description="Application portfolio management coming soon." />;
+        return <MyApps />;
       case 'jointventure':
-        return <Placeholder title="JointVenture" description="Collaboration and partnership management coming soon." />;
+        return <JointVenture />;
       case 'dashboards':
         return <Dashboards />;
       case 'app-management':
         return <Dashboards selectedSection="app-management" />;
       case 'app-settings':
         return <SettingsApp onBack={() => setSelectedTab('app-management')} />;
-      case 'build-management':
-        return <AppBuildManagement onBack={() => setSelectedTab('app-management')} />;
+
       case 'developer-workflows':
         return <DeveloperWorkflows onBack={() => setSelectedTab('app-management')} />;
       case 'app-architecture':
@@ -58,6 +64,16 @@ function App() {
         return <AppUserGuides onBack={() => setSelectedTab('app-management')} />;
       case 'app-documentation':
         return <AppDocumentation onBack={() => setSelectedTab('app-management')} />;
+      case 'git-management':
+        return <GitManagement onBack={() => setSelectedTab('app-management')} />;
+      case 'ai-documentation-workflow':
+        return <AIDocumentationWorkflow onBack={() => setSelectedTab('app-management')} />;
+      case 'dynamic-documentation':
+        return <DynamicDocumentation onBack={() => setSelectedTab('app-management')} />;
+      case 'app-updates-timeline':
+        return <AppUpdatesTimeline onBack={() => setSelectedTab('app-management')} />;
+      case 'brain-nft-connection':
+        return <BrainNFTConnection onBack={() => setSelectedTab('app-management')} />;
       case 'user-guide':
         return <Placeholder title="User Guide" description="User-facing documentation and help resources coming soon." />;
       case 'app-updates':

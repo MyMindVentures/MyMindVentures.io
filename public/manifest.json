@@ -1,24 +1,56 @@
 {
-  "name": "MyMindVentures.io",
+  "name": "MyMindVentures.io - Git Management PWA",
   "short_name": "MyMindVentures",
-  "description": "A futuristic platform for managing development ventures and building applications",
-  "theme_color": "#0891b2",
-  "background_color": "#111827",
-  "display": "standalone",
-  "scope": "/",
+  "description": "A PWA for managing Git operations and codebase version control",
   "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://images.pexels.com/photos/5077047/pexels-photo-5077047.jpeg?auto=compress&cs=tinysrgb&w=192&h=192",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "maskable any"
     },
     {
-      "src": "https://images.pexels.com/photos/5077047/pexels-photo-5077047.jpeg?auto=compress&cs=tinysrgb&w=512&h=512",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "maskable any"
+    }
+  ],
+  "categories": ["productivity", "development"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Git Management",
+      "short_name": "Git",
+      "description": "Open Git Management",
+      "url": "/?tab=git-management",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open Dashboard",
+      "url": "/?tab=dashboards",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

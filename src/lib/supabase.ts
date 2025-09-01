@@ -47,50 +47,9 @@ export const supabaseService = {
     return { data, error };
   },
 
-  // Blueprint Snippets
-  createBlueprintSnippet: async (snippet: Omit<any, 'id'>) => {
-    const { data, error } = await supabase
-      .from('blueprint_snippets')
-      .insert(snippet)
-      .select()
-      .single();
-    return { data, error };
-  },
 
-  getBlueprintSnippets: async (userId: string) => {
-    const { data, error } = await supabase
-      .from('blueprint_snippets')
-      .select('*')
-      .eq('user_id', userId)
-      .order('timestamp', { ascending: false });
-    return { data, error };
-  },
 
-  // Get uncommitted blueprint snippets
-  getUncommittedSnippets: async (userId: string, branch: string = 'main') => {
-    const { data, error } = await supabase
-      .from('blueprint_snippets')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('branch', branch)
-      .is('committed_at', null)
-      .order('timestamp', { ascending: false });
-    return { data, error };
-  },
-
-  // Mark snippets as committed
-  markSnippetsAsCommitted: async (snippetIds: string[], commitId: string) => {
-    const { data, error } = await supabase
-      .from('blueprint_snippets')
-      .update({ 
-        committed_at: new Date().toISOString(),
-        commit_id: commitId 
-      })
-      .in('id', snippetIds)
-      .select();
-    return { data, error };
-  },
-
+  // Git Management Functions
   // Commits
   createCommit: async (commit: Omit<any, 'id'>) => {
     const { data, error } = await supabase
@@ -101,14 +60,109 @@ export const supabaseService = {
     return { data, error };
   },
 
-  getCommits: async (userId: string) => {
-    const { data, error } = await supabase
+  getCommits: async (userId: string, branch?: string) => {
+    let query = supabase
       .from('commits')
       .select('*')
       .eq('user_id', userId)
       .order('timestamp', { ascending: false });
+    
+    if (branch) {
+      query = query.eq('branch', branch);
+    }
+    
+    const { data, error } = await query;
     return { data, error };
   },
+
+  // Branches
+  createBranch: async (branch: Omit<any, 'id'>) => {
+    const { data, error } = await supabase
+      .from('branches')
+      .insert(branch)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  getBranches: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name');
+    return { data, error };
+  },
+
+  switchBranch: async (userId: string, branchName: string) => {
+    // First, set all branches to not current
+    await supabase
+      .from('branches')
+      .update({ is_current: false })
+      .eq('user_id', userId);
+
+    // Then set the target branch as current
+    const { data, error } = await supabase
+      .from('branches')
+      .update({ is_current: true })
+      .eq('user_id', userId)
+      .eq('name', branchName)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // File Status
+  getFileStatus: async (userId: string, branch: string) => {
+    const { data, error } = await supabase
+      .from('file_status')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('branch', branch)
+      .order('path');
+    return { data, error };
+  },
+
+  updateFileStatus: async (userId: string, filePath: string, updates: any) => {
+    const { data, error } = await supabase
+      .from('file_status')
+      .update(updates)
+      .eq('user_id', userId)
+      .eq('path', filePath)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  addFileStatus: async (fileStatus: Omit<any, 'id'>) => {
+    const { data, error } = await supabase
+      .from('file_status')
+      .insert(fileStatus)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Git Settings
+  getGitSettings: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('git_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    return { data, error };
+  },
+
+  updateGitSettings: async (userId: string, settings: any) => {
+    const { data, error } = await supabase
+      .from('git_settings')
+      .upsert({ user_id: userId, ...settings })
+      .select()
+      .single();
+    return { data, error };
+  },
+
+
 
   // Publications
   createPublication: async (publication: Omit<any, 'id'>) => {

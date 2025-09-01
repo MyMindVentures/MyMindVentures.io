@@ -32,7 +32,6 @@ export const Header: React.FC<HeaderProps> = ({ currentPage }) => {
       'jointventure': 'JointVenture',
       'app-management': 'App Management',
       'app-settings': 'App Settings',
-      'build-management': 'Blueprints',
       'build-management': 'App Build Management',
       'developer-workflows': 'Developer Workflows & Instructions',
       'app-architecture': 'App Architecture',

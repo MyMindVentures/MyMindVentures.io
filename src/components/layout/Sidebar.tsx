@@ -17,7 +17,9 @@ import {
   Monitor,
   Zap,
   ChevronRight,
-  Rocket
+  Rocket,
+  GitCommit,
+  Brain
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -60,8 +62,12 @@ const navigationItems: NavItem[] = [
             hasSubmenu: true,
             submenu: [
               { id: 'app-settings', label: 'App Settings', icon: Settings },
-              { id: 'build-management', label: 'App Build Management', icon: FileText },
-              { id: 'developer-workflows', label: 'Developer Workflows & Instructions', icon: Code }
+              { id: 'developer-workflows', label: 'Developer Workflows & Instructions', icon: Code },
+              { id: 'git-management', label: 'Git Management', icon: GitCommit },
+              { id: 'ai-documentation-workflow', label: 'AI Documentation Workflow', icon: Brain },
+              { id: 'dynamic-documentation', label: 'Dynamic Documentation', icon: BookOpen },
+              { id: 'app-updates-timeline', label: 'App Updates Timeline', icon: Rocket },
+              { id: 'brain-nft-connection', label: 'Brain NFT Connection', icon: Brain }
             ]
           },
           {

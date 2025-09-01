@@ -12,7 +12,8 @@ import {
   Eye,
   EyeOff,
   Save,
-  RefreshCw
+  RefreshCw,
+  GitBranch
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -43,6 +44,9 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
   const [pineconeEnv, setPineconeEnv] = useState('');
   const [supabaseUrl, setSupabaseUrl] = useState('');
   const [supabaseKey, setSupabaseKey] = useState('');
+  const [gitRepositoryUrl, setGitRepositoryUrl] = useState('');
+  const [gitAccessToken, setGitAccessToken] = useState('');
+  const [gitDefaultBranch, setGitDefaultBranch] = useState('main');
 
   useEffect(() => {
     loadAPIConnections();
@@ -60,6 +64,7 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
           { service_name: 'perplexity', status: 'disconnected', user_id: 'demo-user', api_key_encrypted: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           { service_name: 'pinecone', status: 'disconnected', user_id: 'demo-user', api_key_encrypted: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           { service_name: 'supabase', status: 'connected', user_id: 'demo-user', api_key_encrypted: import.meta.env.VITE_SUPABASE_ANON_KEY || '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { service_name: 'git', status: 'disconnected', user_id: 'demo-user', api_key_encrypted: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         ];
         
         for (const conn of defaultConnections) {
@@ -107,6 +112,15 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
                 setSupabaseKey(conn.api_key_encrypted);
                 if (conn.metadata?.supabaseUrl) {
                   setSupabaseUrl(conn.metadata.supabaseUrl);
+                }
+                break;
+              case 'git':
+                setGitAccessToken(conn.api_key_encrypted);
+                if (conn.metadata?.repositoryUrl) {
+                  setGitRepositoryUrl(conn.metadata.repositoryUrl);
+                }
+                if (conn.metadata?.defaultBranch) {
+                  setGitDefaultBranch(conn.metadata.defaultBranch);
                 }
                 break;
             }
@@ -303,6 +317,9 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
       if (supabaseKey.trim()) {
         savePromises.push(saveAPIKey('supabase', supabaseKey, { supabaseUrl }));
       }
+      if (gitAccessToken.trim()) {
+        savePromises.push(saveAPIKey('git', gitAccessToken, { repositoryUrl: gitRepositoryUrl, defaultBranch: gitDefaultBranch }));
+      }
       
       await Promise.all(savePromises);
       
@@ -318,6 +335,7 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
             perplexityKey.trim() ? 'perplexity' : null,
             pineconeKey.trim() ? 'pinecone' : null,
             supabaseKey.trim() ? 'supabase' : null,
+            gitAccessToken.trim() ? 'git' : null,
           ].filter(Boolean),
           total_services: savePromises.length
         },
@@ -358,6 +376,11 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
           setSupabaseKey('');
           setSupabaseUrl('');
           break;
+        case 'git':
+          setGitAccessToken('');
+          setGitRepositoryUrl('');
+          setGitDefaultBranch('main');
+          break;
       }
       
       // Clear from database
@@ -390,6 +413,7 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
       { service: 'perplexity', key: perplexityKey },
       { service: 'pinecone', key: pineconeKey, params: { environment: pineconeEnv } },
       { service: 'supabase', key: supabaseKey, params: { supabaseUrl } },
+      { service: 'git', key: gitAccessToken, params: { repositoryUrl: gitRepositoryUrl, defaultBranch: gitDefaultBranch } },
     ].filter(conn => conn.key.trim());
 
     for (const conn of connections) {
@@ -793,16 +817,108 @@ export const SettingsApp: React.FC<SettingsAppProps> = ({ onBack }) => {
             </div>
           </div>
         </Card>
+
+        {/* Git Configuration */}
+        <Card title="Git Configuration">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <GitBranch className="w-4 h-4 text-orange-400" />
+                <span className="text-white font-medium">Git Repository</span>
+              </div>
+              <div className={`flex items-center space-x-2 px-2 py-1 rounded text-xs ${getStatusColor(getConnectionStatus('git'))}`}>
+                {getStatusIcon(getConnectionStatus('git'))}
+                <span className="capitalize">{getConnectionStatus('git')}</span>
+              </div>
+            </div>
+            
+            <Input
+              label="Repository URL"
+              value={gitRepositoryUrl}
+              onChange={setGitRepositoryUrl}
+              placeholder="https://github.com/username/repo.git"
+            />
+
+            <div className="relative">
+              <Input
+                label="Access Token"
+                type={showApiKeys.git ? 'text' : 'password'}
+                value={gitAccessToken}
+                onChange={setGitAccessToken}
+                placeholder="ghp_... or glpat_..."
+              />
+              <button
+                onClick={() => toggleApiKeyVisibility('git')}
+                className="absolute right-3 top-8 text-gray-400 hover:text-white"
+              >
+                {showApiKeys.git ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <Input
+              label="Default Branch"
+              value={gitDefaultBranch}
+              onChange={setGitDefaultBranch}
+              placeholder="main"
+            />
+
+            <Button
+              onClick={() => testConnection('git', gitAccessToken, { repositoryUrl: gitRepositoryUrl, defaultBranch: gitDefaultBranch })}
+              disabled={!gitAccessToken || !gitRepositoryUrl || isTesting === 'git'}
+              className="w-full"
+              size="sm"
+            >
+              {isTesting === 'git' ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <TestTube className="w-3 h-3 mr-2" />
+                  Test Connection
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={() => saveAPIKey('git', gitAccessToken, { repositoryUrl: gitRepositoryUrl, defaultBranch: gitDefaultBranch })}
+              disabled={!gitAccessToken || !gitRepositoryUrl}
+              variant="secondary"
+              className="w-full"
+              size="sm"
+            >
+              <Save className="w-3 h-3 mr-2" />
+              Save Git Settings
+            </Button>
+            
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => clearAPIKey('git')}
+                disabled={!gitAccessToken}
+                variant="ghost"
+                className="flex-1"
+                size="sm"
+              >
+                Clear
+              </Button>
+              <div className="text-xs text-gray-500 flex-1 text-center py-2">
+                Last tested: {getLastTestedTime('git')}
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Connection Status Overview */}
       <Card title="Connection Status Overview" gradient>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {[
             { service: 'OpenAI', key: 'openai', icon: Key, color: 'text-cyan-400' },
             { service: 'Perplexity', key: 'perplexity', icon: Globe, color: 'text-purple-400' },
             { service: 'Pinecone', key: 'pinecone', icon: Database, color: 'text-green-400' },
             { service: 'Supabase', key: 'supabase', icon: Database, color: 'text-blue-400' },
+            { service: 'Git', key: 'git', icon: GitBranch, color: 'text-orange-400' },
           ].map((service) => {
             const Icon = service.icon;
             const status = getConnectionStatus(service.key);

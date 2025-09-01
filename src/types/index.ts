@@ -42,16 +42,7 @@ export interface Blueprint {
   updated_at: string;
 }
 
-export interface BlueprintSnippet {
-  id: string;
-  timestamp: string;
-  branch: string;
-  snippet: string;
-  title?: string;
-  themes: string[];
-  user_id: string;
-  created_at: string;
-}
+
 
 export interface Commit {
   id: string;
