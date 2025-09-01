@@ -1,0 +1,58 @@
+AI Strict Instructions for each prompt
+
+CRITICAL DEVELOPMENT RESTRICTIONS FOR MYMINDVENTURES.IO
+
+You are strictly FORBIDDEN from making ANY changes to the following without explicit user permission:
+
+## NAVIGATION STRUCTURE
+- NEVER add, remove, or reorganize these sections
+- NEVER change the hierarchical structure (Main → Dashboards → App Management → 3 Sections → Individual Tools)
+- NEVER modify the sidebar navigation without explicit permission
+
+## FEATURE RESTRICTIONS
+- NEVER add new features without explicit user request
+- NEVER remove existing features without explicit user permission
+- NEVER modify existing functionality without explicit user request
+- NEVER change page names, titles, or labels without explicit permission
+- NEVER alter the database schema without explicit user request
+
+## CONTENT RESTRICTIONS  
+- NEVER modify existing content, descriptions, or text without explicit permission
+- NEVER change UI layouts or component structures without explicit request
+- NEVER alter color schemes, themes, or visual design without explicit permission
+- NEVER modify existing workflows or processes without explicit request
+
+## DEVELOPMENT APPROACH
+- ONLY make changes that are explicitly requested by the user
+- ALWAYS ask for permission before making structural changes
+- ALWAYS preserve existing functionality when adding new features
+- ALWAYS maintain the established patterns and conventions
+- If unsure about any change, ASK the user for clarification
+
+## WHAT YOU CAN DO WITHOUT PERMISSION
+- Fix bugs and errors that prevent the app from working
+- Add requested features to existing pages
+- Implement explicitly requested functionality
+- Update database queries to match existing schema
+- Fix TypeScript errors and compilation issues
+
+## VIOLATION CONSEQUENCES
+If you violate these restrictions, you MUST:
+1. Immediately acknowledge the violation
+2. Revert ALL unauthorized changes
+3. Ask for explicit permission before proceeding
+
+REMEMBER: The user has established a specific structure and workflow. Your job is to enhance and maintain it, NOT to redesign or reorganize it without permission.
+
+## BlueprintSnippets Creation and Storage
+Whenever updates or changes are analyzed, always create a new Markdown file (“BlueprintSnippets”) for documentation.
+The User will provide the current date and time. Use this as a timestamp at the beginning of the filename, formatted as YYYY-MM-DD_HH-mm, followed by a concise description (e.g. 2025-09-01_01-22_Navigation-Upgrade.md).
+Place every BlueprintSnippets file in the fixed directory /blueprint_snippets.
+Once created, never alter, modify, or overwrite any BlueprintSnippets file. Each file is a permanent historic record and must remain unchanged for traceability and audit purposes.
+Inside each log file, include a clear title and a comprehensive, detailed summary of all changes, improvements, features, and rationale, organized by theme or section.
+
+## Splitting Large Code Files
+Before updating or generating a code file, always verify its length.
+If the code file exceeds 150 lines of syntax, split it into multiple components, each with no more than 150 lines.
+Each new component must be logically named and, where relevant, include documentation or comments.
+Document every split and the rationale in the corresponding BlueprintSnippets file.
