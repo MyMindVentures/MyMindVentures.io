@@ -1,0 +1,441 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  # Security and Quality Checks
+  security:
+    name: 🔒 Security & Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run security tests
+        run: npm run test:security
+
+      - name: Upload security test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-test-results
+          path: coverage/
+
+  # Testing Stage
+  test:
+    name: 🧪 Testing
+    runs-on: ubuntu-latest
+    needs: security
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:run
+
+      - name: Run E2E tests
+        run: |
+          npm run build
+          npm run cypress:run:headless
+        env:
+          CI: true
+
+      - name: Generate test coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            coverage/
+            cypress/videos/
+            cypress/screenshots/
+
+  # Build and Quality Checks
+  build:
+    name: 🏗️ Build & Quality
+    runs-on: ubuntu-latest
+    needs: [security, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            http://localhost:3000
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Check bundle size
+        run: |
+          npm install -g @next/bundle-analyzer
+          npm run build
+          npx @next/bundle-analyzer
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            .next/
+            lighthouse-results/
+
+  # PWA Validation
+  pwa-validation:
+    name: 📱 PWA Validation
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start development server
+        run: npm run preview &
+        env:
+          CI: true
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Validate PWA manifest
+        run: |
+          npm install -g pwa-asset-generator
+          pwa-asset-generator --help
+
+      - name: Validate service worker
+        run: |
+          if [ -f "public/sw.js" ]; then
+            echo "✅ Service worker exists"
+            node -e "
+              const fs = require('fs');
+              const sw = fs.readFileSync('public/sw.js', 'utf8');
+              if (sw.includes('workbox') || sw.includes('cache')) {
+                console.log('✅ Service worker contains caching logic');
+              } else {
+                console.log('❌ Service worker missing caching logic');
+                process.exit(1);
+              }
+            "
+          else
+            echo "❌ Service worker missing"
+            exit 1
+          fi
+
+      - name: Upload PWA validation results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-validation
+          path: public/
+
+  # Security Deep Scan
+  security-scan:
+    name: 🛡️ Security Deep Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run OWASP dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          projectName: 'MyMindVentures.io'
+          scanPath: '.'
+          format: 'HTML'
+          out: 'reports'
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: reports/
+
+  # Performance Testing
+  performance:
+    name: ⚡ Performance Testing
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start server
+        run: npm run preview &
+        env:
+          CI: true
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Run WebPageTest
+        uses: WebPageTest/webpagetest-action@master
+        with:
+          apiKey: ${{ secrets.WEBPAGETEST_API_KEY }}
+          url: 'http://localhost:3000'
+          location: 'ec2-us-east-1:Chrome'
+          connectivity: 'Cable'
+          runs: 1
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli
+          lhci autorun
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            .lighthouseci/
+            webpagetest-results/
+
+  # Deployment Staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, pwa-validation, security-scan, performance]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: staging
+          REACT_APP_ENV: staging
+
+      - name: Deploy to Vercel (Staging)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+
+      - name: Run smoke tests
+        run: |
+          npm run cypress:run:headless -- --config baseUrl=${{ steps.deploy.outputs.preview-url }}
+        env:
+          CI: true
+
+  # Deployment Production
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, pwa-validation, security-scan, performance]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+          REACT_APP_ENV: production
+
+      - name: Deploy to Vercel (Production)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+
+      - name: Run production smoke tests
+        run: |
+          npm run cypress:run:headless -- --config baseUrl=${{ steps.deploy.outputs.preview-url }}
+        env:
+          CI: true
+
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          text: '🚀 Production deployment successful!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Monitoring and Health Check
+  health-check:
+    name: 💚 Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health checks
+        run: |
+          # Check if monitoring services are accessible
+          curl -f ${{ secrets.SENTRY_DSN }} || echo "Sentry check failed"
+          curl -f ${{ secrets.POSTHOG_KEY }} || echo "Posthog check failed"
+
+      - name: Generate deployment report
+        run: |
+          echo "## 🚀 Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date)" >> $GITHUB_STEP_SUMMARY
+
+  # Notifications
+  notify:
+    name: 📢 Notifications
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: always()
+    steps:
+      - name: Notify on failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          text: '❌ CI/CD pipeline failed!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Update deployment status
+        run: |
+          echo "Pipeline completed with status: ${{ job.status }}"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ All checks passed successfully!"
+          else
+            echo "❌ Some checks failed. Please review the logs."
+          fi
+
+

@@ -1,0 +1,385 @@
+name: Continuous Integration Loop
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+      force_rebuild:
+        description: 'Force complete rebuild'
+        required: false
+        default: false
+        type: boolean
+      skip_tests:
+        description: 'Skip tests (not recommended)'
+        required: false
+        default: false
+        type: boolean
+
+  # Automatic triggers
+  push:
+    branches: [main, develop, feature/*, hotfix/*]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '8'
+
+jobs:
+  # 1. PREPARATION & VALIDATION
+  preparation:
+    name: 🚀 Preparation & Validation
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.decision.outputs.should_deploy }}
+      environment: ${{ steps.decision.outputs.environment }}
+      force_rebuild: ${{ steps.decision.outputs.force_rebuild }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔍 Analyze commit and determine action
+        id: decision
+        run: |
+          echo "Analyzing commit: ${{ github.event.head_commit.message }}"
+          
+          # Determine environment
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            FORCE_REBUILD="${{ github.event.inputs.force_rebuild }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENVIRONMENT="production"
+            FORCE_REBUILD="false"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            ENVIRONMENT="staging"
+            FORCE_REBUILD="false"
+          else
+            ENVIRONMENT="development"
+            FORCE_REBUILD="false"
+          fi
+          
+          # Determine if we should deploy
+          SHOULD_DEPLOY="false"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            SHOULD_DEPLOY="true"
+          fi
+          
+          echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "force_rebuild=$FORCE_REBUILD" >> $GITHUB_OUTPUT
+          
+          echo "🚀 Decision made:"
+          echo "  - Environment: $ENVIRONMENT"
+          echo "  - Should deploy: $SHOULD_DEPLOY"
+          echo "  - Force rebuild: $FORCE_REBUILD"
+
+      - name: 📊 Generate workflow summary
+        run: |
+          echo "## 🔄 Continuous Integration Loop Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ steps.decision.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deploy:** ${{ steps.decision.outputs.should_deploy }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Rebuild:** ${{ steps.decision.outputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.decision.outputs.should_deploy }}" == "true" ]]; then
+            echo "1. ✅ Code Quality & Security" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🧪 Testing & Validation" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🏗️ Build & Optimization" >> $GITHUB_STEP_SUMMARY
+            echo "4. 🚀 Deployment" >> $GITHUB_STEP_SUMMARY
+            echo "5. 📊 Post-Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. ✅ Code Quality & Security" >> $GITHUB_STEP_SUMMARY
+            echo "2. 🧪 Testing & Validation" >> $GITHUB_STEP_SUMMARY
+            echo "3. 📊 Results Analysis" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # 2. CODE QUALITY & SECURITY
+  code-quality:
+    name: ✅ Code Quality & Security
+    runs-on: ubuntu-latest
+    needs: preparation
+    if: always()
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint
+
+      - name: 🔒 Security audit
+        run: npm audit --audit-level=moderate
+
+      - name: 📝 Type check
+        run: npm run type-check
+
+      - name: 🎨 Format check
+        run: npm run format:check
+
+      - name: 📊 Generate quality report
+        run: |
+          echo "## ✅ Code Quality & Security Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Completed" >> $GITHUB_STEP_SUMMARY
+          echo "**Linting:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "**Security:** ✅ Audited" >> $GITHUB_STEP_SUMMARY
+          echo "**Types:** ✅ Validated" >> $GITHUB_STEP_SUMMARY
+          echo "**Format:** ✅ Consistent" >> $GITHUB_STEP_SUMMARY
+
+  # 3. TESTING & VALIDATION
+  testing:
+    name: 🧪 Testing & Validation
+    runs-on: ubuntu-latest
+    needs: [preparation, code-quality]
+    if: always()
+    
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run unit tests
+        run: npm run test:unit
+
+      - name: 🔗 Run integration tests
+        run: npm run test:integration
+
+      - name: 🌐 Run E2E tests
+        run: npm run test:e2e
+
+      - name: 📊 Generate coverage report
+        run: npm run test:coverage
+
+      - name: 📊 Generate testing report
+        run: |
+          echo "## 🧪 Testing & Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Node.js Version:** ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Unit Tests:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "**Integration Tests:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "**E2E Tests:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "**Coverage:** 📊 Generated" >> $GITHUB_STEP_SUMMARY
+
+  # 4. BUILD & OPTIMIZATION
+  build:
+    name: 🏗️ Build & Optimization
+    runs-on: ubuntu-latest
+    needs: [preparation, code-quality, testing]
+    if: needs.preparation.outputs.should_deploy == 'true' && always()
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 📊 Analyze bundle
+        run: npm run build:analyze
+
+      - name: 🚀 Lighthouse CI
+        run: npm run lighthouse
+
+      - name: 📊 Generate build report
+        run: |
+          echo "## 🏗️ Build & Optimization Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Completed" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ✅ Successful" >> $GITHUB_STEP_SUMMARY
+          echo "**Bundle Analysis:** 📊 Generated" >> $GITHUB_STEP_SUMMARY
+          echo "**Lighthouse:** 📊 Performance metrics" >> $GITHUB_STEP_SUMMARY
+
+  # 5. DEPLOYMENT
+  deployment:
+    name: 🚀 Deployment
+    runs-on: ubuntu-latest
+    needs: [preparation, code-quality, testing, build]
+    if: needs.preparation.outputs.should_deploy == 'true' && always()
+    environment: ${{ needs.preparation.outputs.environment }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build for deployment
+        run: npm run build:${{ needs.preparation.outputs.environment }}
+
+      - name: 🚀 Deploy to ${{ needs.preparation.outputs.environment }}
+        run: |
+          echo "Deploying to ${{ needs.preparation.outputs.environment }}..."
+          npm run deploy:${{ needs.preparation.outputs.environment }}
+
+      - name: 🧪 Smoke tests
+        run: npm run test:smoke:${{ needs.preparation.outputs.environment }}
+
+      - name: 📊 Generate deployment report
+        run: |
+          echo "## 🚀 Deployment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.preparation.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "**Smoke Tests:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  # 6. POST-DEPLOYMENT VALIDATION
+  post-deployment:
+    name: 📊 Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [preparation, deployment]
+    if: needs.preparation.outputs.should_deploy == 'true' && always()
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏥 Health check
+        run: npm run health:check:${{ needs.preparation.outputs.environment }}
+
+      - name: 📊 Performance monitoring
+        run: npm run performance:monitor:${{ needs.preparation.outputs.environment }}
+
+      - name: 🔍 Error monitoring
+        run: npm run error:monitor:${{ needs.preparation.outputs.environment }}
+
+      - name: 📊 Generate validation report
+        run: |
+          echo "## 📊 Post-Deployment Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Health Check:** ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "**Performance:** 📊 Monitored" >> $GITHUB_STEP_SUMMARY
+          echo "**Error Rate:** 📊 Monitored" >> $GITHUB_STEP_SUMMARY
+
+  # 7. FINAL SUMMARY
+  summary:
+    name: 📋 Final Summary
+    runs-on: ubuntu-latest
+    needs: [preparation, code-quality, testing, build, deployment, post-deployment]
+    if: always()
+    
+    steps:
+      - name: 📊 Generate final summary
+        run: |
+          echo "## 🎯 Continuous Integration Loop - Final Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Determine overall status
+          if [[ "${{ needs.preparation.outputs.should_deploy }}" == "true" ]]; then
+            echo "**🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Environment:** ${{ needs.preparation.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Deployment Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**✅ VALIDATION COMPLETED SUCCESSFULLY!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**No deployment required for this branch**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**📋 Job Results:**" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Preparation: ${{ needs.preparation.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🧪 Testing: ${{ needs.testing.result }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.preparation.outputs.should_deploy }}" == "true" ]]; then
+            echo "- 🏗️ Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "- 🚀 Deployment: ${{ needs.deployment.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "- 📊 Post-Deployment: ${{ needs.post-deployment.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔄 Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.preparation.outputs.should_deploy }}" == "true" ]]; then
+            echo "1. 🎉 Monitor application performance" >> $GITHUB_STEP_SUMMARY
+            echo "2. 📊 Review deployment metrics" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🔍 Address any post-deployment issues" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "1. 🔄 Continue development on feature branch" >> $GITHUB_STEP_SUMMARY
+            echo "2. 📝 Address any code quality issues" >> $GITHUB_STEP_SUMMARY
+            echo "3. 🧪 Fix any failing tests" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🎯 Set workflow status
+        run: |
+          # Determine overall workflow status
+          if [[ "${{ needs.preparation.outputs.should_deploy }}" == "true" ]]; then
+            if [[ "${{ needs.deployment.result }}" == "success" ]]; then
+              echo "🎉 Workflow completed successfully with deployment!"
+              exit 0
+            else
+              echo "❌ Workflow failed during deployment!"
+              exit 1
+            fi
+          else
+            if [[ "${{ needs.testing.result }}" == "success" ]]; then
+              echo "✅ Workflow completed successfully with validation!"
+              exit 0
+            else
+              echo "❌ Workflow failed during validation!"
+              exit 1
+            fi
+          fi

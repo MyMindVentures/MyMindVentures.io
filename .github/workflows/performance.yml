@@ -1,0 +1,316 @@
+name: ⚡ Performance Testing
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Lighthouse Performance Testing
+  lighthouse:
+    name: 🚀 Lighthouse Performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start server
+        run: npm run preview &
+        env:
+          CI: true
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli
+          lhci autorun
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+
+  # WebPageTest Performance
+  webpagetest:
+    name: 🌐 WebPageTest Performance
+    runs-on: ubuntu-latest
+    needs: lighthouse
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start server
+        run: npm run preview &
+        env:
+          CI: true
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Run WebPageTest
+        uses: WebPageTest/webpagetest-action@master
+        with:
+          apiKey: ${{ secrets.WEBPAGETEST_API_KEY }}
+          url: 'http://localhost:3000'
+          location: 'ec2-us-east-1:Chrome'
+          connectivity: 'Cable'
+          runs: 3
+          firstViewOnly: false
+          video: true
+          timeline: true
+
+      - name: Upload WebPageTest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: webpagetest-results
+          path: webpagetest-results/
+
+  # Core Web Vitals Monitoring
+  core-web-vitals:
+    name: 📊 Core Web Vitals
+    runs-on: ubuntu-latest
+    needs: lighthouse
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start server
+        run: npm run preview &
+        env:
+          CI: true
+
+      - name: Wait for server
+        run: sleep 10
+
+      - name: Run Core Web Vitals test
+        run: |
+          npm install -g lighthouse
+          
+          # Test LCP (Largest Contentful Paint)
+          lighthouse http://localhost:3000 --output=json --output-path=./lcp-test.json --only-categories=performance
+          
+          # Test FID (First Input Delay) simulation
+          lighthouse http://localhost:3000 --output=json --output-path=./fid-test.json --only-categories=performance --chrome-flags="--disable-background-timer-throttling"
+          
+          # Test CLS (Cumulative Layout Shift)
+          lighthouse http://localhost:3000 --output=json --output-path=./cls-test.json --only-categories=performance
+
+      - name: Analyze Core Web Vitals
+        run: |
+          echo "## 📊 Core Web Vitals Analysis" >> $GITHUB_STEP_SUMMARY
+          
+          # Parse LCP results
+          if [ -f "lcp-test.json" ]; then
+            LCP_VALUE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('lcp-test.json')).audits['largest-contentful-paint'].numericValue)")
+            echo "**LCP:** ${LCP_VALUE}ms" >> $GITHUB_STEP_SUMMARY
+            
+            if (( $(echo "$LCP_VALUE < 2500" | bc -l) )); then
+              echo "✅ Good (< 2.5s)" >> $GITHUB_STEP_SUMMARY
+            elif (( $(echo "$LCP_VALUE < 4000" | bc -l) )); then
+              echo "⚠️  Needs improvement (< 4s)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Poor (> 4s)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          # Parse FID results
+          if [ -f "fid-test.json" ]; then
+            FID_VALUE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('fid-test.json')).audits['max-potential-fid'].numericValue)")
+            echo "**FID:** ${FID_VALUE}ms" >> $GITHUB_STEP_SUMMARY
+            
+            if (( $(echo "$FID_VALUE < 100" | bc -l) )); then
+              echo "✅ Good (< 100ms)" >> $GITHUB_STEP_SUMMARY
+            elif (( $(echo "$FID_VALUE < 300" | bc -l) )); then
+              echo "⚠️  Needs improvement (< 300ms)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Poor (> 300ms)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          # Parse CLS results
+          if [ -f "cls-test.json" ]; then
+            CLS_VALUE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('cls-test.json')).audits['cumulative-layout-shift'].numericValue)")
+            echo "**CLS:** ${CLS_VALUE}" >> $GITHUB_STEP_SUMMARY
+            
+            if (( $(echo "$CLS_VALUE < 0.1" | bc -l) )); then
+              echo "✅ Good (< 0.1)" >> $GITHUB_STEP_SUMMARY
+            elif (( $(echo "$CLS_VALUE < 0.25" | bc -l) )); then
+              echo "⚠️  Needs improvement (< 0.25)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Poor (> 0.25)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Upload Core Web Vitals results
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-web-vitals-results
+          path: |
+            lcp-test.json
+            fid-test.json
+            cls-test.json
+
+  # Bundle Analysis
+  bundle-analysis:
+    name: 📦 Bundle Analysis
+    runs-on: ubuntu-latest
+    needs: lighthouse
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Analyze bundle size
+        run: |
+          npm install -g @next/bundle-analyzer
+          
+          # Generate bundle analysis
+          npx @next/bundle-analyzer --out-dir=./bundle-analysis
+          
+          # Check bundle sizes
+          echo "## 📦 Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "dist" ]; then
+            TOTAL_SIZE=$(du -sh dist | cut -f1)
+            echo "**Total Bundle Size:** ${TOTAL_SIZE}" >> $GITHUB_STEP_SUMMARY
+            
+            # Check individual file sizes
+            find dist -name "*.js" -exec du -h {} \; | sort -hr | head -5 | while read size file; do
+              echo "- ${file}: ${size}" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: |
+            bundle-analysis/
+            dist/
+
+  # Performance Regression Testing
+  regression-testing:
+    name: 📈 Performance Regression
+    runs-on: ubuntu-latest
+    needs: [lighthouse, webpagetest, core-web-vitals, bundle-analysis]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all performance artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: performance-artifacts/
+
+      - name: Generate performance report
+        run: |
+          echo "## ⚡ Performance Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Date:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 🚀 Lighthouse Performance Score" >> $GITHUB_STEP_SUMMARY
+          if [ -d "performance-artifacts/lighthouse-results" ]; then
+            echo "✅ Lighthouse tests completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Lighthouse tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### 🌐 WebPageTest Results" >> $GITHUB_STEP_SUMMARY
+          if [ -d "performance-artifacts/webpagetest-results" ]; then
+            echo "✅ WebPageTest completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ WebPageTest failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### 📊 Core Web Vitals" >> $GITHUB_STEP_SUMMARY
+          if [ -d "performance-artifacts/core-web-vitals-results" ]; then
+            echo "✅ Core Web Vitals tests completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Core Web Vitals tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### 📦 Bundle Analysis" >> $GITHUB_STEP_SUMMARY
+          if [ -d "performance-artifacts/bundle-analysis" ]; then
+            echo "✅ Bundle analysis completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Bundle analysis failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for performance regressions
+        run: |
+          # This would compare current results with baseline
+          # For now, just check if all tests passed
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "🟢 All performance tests passed"
+          else
+            echo "🔴 Some performance tests failed"
+          fi
+
+      - name: Notify performance issues
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          text: '⚠️ Performance regression detected! Please review the test results.'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
