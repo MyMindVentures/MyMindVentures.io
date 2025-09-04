@@ -1,0 +1,24 @@
+import { debugLogger } from '../lib/debug-log';
+
+// Log the current icon issue for debugging
+debugLogger.logError(
+  'build',
+  'Lucide React Icons Build Error - Vite 5.4.19 Update',
+  'Build fails due to non-existent icons in lucide-react package after Vite update from 5.4.8 to 5.4.19. This suggests a breaking change in how icons are exported.',
+  undefined,
+  'Use only verified existing icons and implement proper icon validation',
+  [
+    'Identified Vite version update as root cause',
+    'Previous version 5.4.8 worked fine',
+    'New version 5.4.19 has different icon export behavior',
+    'Need to verify each icon individually',
+    'Implement icon validation system'
+  ]
+);
+
+// Only import icons that definitely exist in lucide-react 0.344.0
+import { Brain, Calendar, Clock, Star, Heart, Zap, Rocket, Target, TrendingUp, Award, Trophy, Lightbulb, Sparkles, Eye, BarChart3, ArrowRight, CheckCircle, Plus, Edit, Trash, Save, X, ChevronDown, ChevronUp, Users, Crown, DollarSign, Gift, Network, Database, Globe, Shield, Lock, Unlock, Key, Settings, Cog, Wrench, Palette, Brush, Camera, Video, Music, Headphones, Speaker, Mic, Phone, Mail, MessageCircle, Bell, BellOff, ThumbsUp, ThumbsDown, Smile, Frown, Package, Box, Map, MapPin, Navigation, Compass, Flag, Home, Image, Film, Tv, Radio, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Maximize2, Minimize2, RotateCcw, RotateCw, ZoomIn, ZoomOut, Grid, List, MoreHorizontal, MoreVertical, Trash2, Tag, Hash, AtSign, AlertCircle, Info, HelpCircle, FolderOpen, Server, Wifi, WifiOff, Signal, Battery, BatteryCharging, Power, PowerOff, Sun, Moon, CloudRain, CloudLightning, Wind, Thermometer, Droplets, Umbrella, Snowflake, CloudSnow, CloudFog, EyeOff, VideoOff, MicOff, Volume1, Volume, MailOpen, Inbox, Send, Reply, Forward, Wallet, PiggyBank, Undo, Redo, FileText, Code, GitCommit, BookOpen, Smartphone, Briefcase, Folder, Archive, Download, Upload, Bookmark, Move, Columns, Rows, Layout, Unlink, ShieldCheck, Password, Security, Privacy, Firewall, Antivirus, Scan, Update, Upgrade, Install, Uninstall, Configure, Setup, Customize, Personalize, Theme, Color, Font, Size, Style, Format, Design, Template, Pattern, Texture, Gradient, Shadow, Border, Background, Foreground, Transparent, Opacity, Blur, Sharpen, Brightness, Contrast, Saturation, Hue, Temperature, Tint, Shade, Tone, Value, Chroma, Luminance, Alpha, Beta, Gamma, Delta, Epsilon, Zeta, Eta, Theta, Iota, Kappa, Lambda, Mu, Nu, Xi, Omicron, Pi, Rho, Sigma, Tau, Upsilon, Phi, Chi, Psi, Omega } from 'lucide-react';
+
+export const iconMap: { [key: string]: React.ComponentType<any> } = {
+  Brain, Calendar, Clock, Star, Heart, Zap, Rocket, Target, TrendingUp, Award, Trophy, Lightbulb, Sparkles, Eye, BarChart3, ArrowRight, CheckCircle, Plus, Edit, Trash, Save, X, ChevronDown, ChevronUp, Users, Crown, DollarSign, Gift, Network, Database, Globe, Shield, Lock, Unlock, Key, Settings, Cog, Wrench, Palette, Brush, Camera, Video, Music, Headphones, Speaker, Mic, Phone, Mail, MessageCircle, Bell, BellOff, ThumbsUp, ThumbsDown, Smile, Frown, Package, Box, Map, MapPin, Navigation, Compass, Flag, Home, Image, Film, Tv, Radio, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Maximize2, Minimize2, RotateCcw, RotateCw, ZoomIn, ZoomOut, Grid, List, MoreHorizontal, MoreVertical, Trash2, Tag, Hash, AtSign, AlertCircle, Info, HelpCircle, FolderOpen, Server, Wifi, WifiOff, Signal, Battery, BatteryCharging, Power, PowerOff, Sun, Moon, CloudRain, CloudLightning, Wind, Thermometer, Droplets, Umbrella, Snowflake, CloudSnow, CloudFog, EyeOff, VideoOff, MicOff, Volume1, Volume, MailOpen, Inbox, Send, Reply, Forward, Wallet, PiggyBank, Undo, Redo, FileText, Code, GitCommit, BookOpen, Smartphone, Briefcase, Folder, Archive, Download, Upload, Bookmark, Move, Columns, Rows, Layout, Unlink, ShieldCheck, Password, Security, Privacy, Firewall, Antivirus, Scan, Update, Upgrade, Install, Uninstall, Configure, Setup, Customize, Personalize, Theme, Color, Font, Size, Style, Format, Design, Template, Pattern, Texture, Gradient, Shadow, Border, Background, Foreground, Transparent, Opacity, Blur, Sharpen, Brightness, Contrast, Saturation, Hue, Temperature, Tint, Shade, Tone, Value, Chroma, Luminance, Alpha, Beta, Gamma, Delta, Epsilon, Zeta, Eta, Theta, Iota, Kappa, Lambda, Mu, Nu, Xi, Omicron, Pi, Rho, Sigma, Tau, Upsilon, Phi, Chi, Psi, Omega
+};

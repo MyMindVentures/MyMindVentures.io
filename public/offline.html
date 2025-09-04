@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - MyMindVentures.io</title>
+    <meta name="description" content="Je bent momenteel offline. Probeer je verbinding te herstellen.">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .offline-container {
+            text-align: center;
+            max-width: 500px;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .offline-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 20px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .cached-content {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 15px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .cached-content h3 {
+            color: #3b82f6;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .cached-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .cached-link {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cached-link:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .connection-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .retry-count {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        @media (max-width: 480px) {
+            .offline-container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .action-buttons {
+                gap: 12px;
+            }
+
+            .btn {
+                padding: 14px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            📡
+        </div>
+        
+        <h1>Je bent offline</h1>
+        <p class="subtitle">
+            Er is geen internetverbinding beschikbaar. 
+            Probeer je verbinding te herstellen of gebruik de gecachte content.
+        </p>
+
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Geen verbinding</span>
+        </div>
+
+        <div class="action-buttons">
+            <button id="retryBtn" class="btn btn-primary">
+                🔄 Verbinding herstellen
+            </button>
+            
+            <button id="checkCacheBtn" class="btn btn-secondary">
+                📱 Gecachte content bekijken
+            </button>
+        </div>
+
+        <div class="cached-content" id="cachedContent" style="display: none;">
+            <h3>📚 Beschikbare gecachte content:</h3>
+            <div class="cached-links">
+                <a href="/" class="cached-link">
+                    🏠 Dashboard
+                </a>
+                <a href="/ai-insights" class="cached-link">
+                    🤖 AI Insights
+                </a>
+                <a href="/database" class="cached-link">
+                    🗄️ Database
+                </a>
+                <a href="/workflows" class="cached-link">
+                    ⚡ Workflows
+                </a>
+            </div>
+        </div>
+
+        <div class="connection-info">
+            <p>🔄 Automatische herverbinding wordt geprobeerd...</p>
+            <p>Pogingen: <span class="retry-count" id="retryCount">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        class OfflineManager {
+            constructor() {
+                this.retryCount = 0;
+                this.maxRetries = 5;
+                this.retryInterval = 3000; // 3 seconden
+                this.isOnline = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.startConnectionCheck();
+                this.updateRetryCount();
+            }
+
+            bindEvents() {
+                document.getElementById('retryBtn').addEventListener('click', () => {
+                    this.manualRetry();
+                });
+
+                document.getElementById('checkCacheBtn').addEventListener('click', () => {
+                    this.toggleCachedContent();
+                });
+
+                // Luister naar online/offline events
+                window.addEventListener('online', () => this.handleOnline());
+                window.addEventListener('offline', () => this.handleOffline());
+            }
+
+            startConnectionCheck() {
+                this.checkConnection();
+                
+                // Check elke 3 seconden
+                setInterval(() => {
+                    if (!this.isOnline) {
+                        this.checkConnection();
+                    }
+                }, this.retryInterval);
+            }
+
+            async checkConnection() {
+                try {
+                    // Probeer een kleine request naar een betrouwbare endpoint
+                    const response = await fetch('/manifest.json', {
+                        method: 'HEAD',
+                        cache: 'no-cache'
+                    });
+                    
+                    if (response.ok) {
+                        this.handleOnline();
+                    }
+                } catch (error) {
+                    this.handleOffline();
+                }
+            }
+
+            handleOnline() {
+                this.isOnline = true;
+                this.retryCount = 0;
+                this.updateRetryCount();
+                
+                // Toon success message
+                this.showMessage('✅ Verbinding hersteld!', 'success');
+                
+                // Redirect naar hoofdpagina na 2 seconden
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+
+            handleOffline() {
+                this.isOnline = false;
+                this.retryCount++;
+                this.updateRetryCount();
+                
+                if (this.retryCount >= this.maxRetries) {
+                    this.showMessage('⚠️ Maximum herverbindingspogingen bereikt', 'warning');
+                    document.getElementById('retryBtn').disabled = true;
+                }
+            }
+
+            manualRetry() {
+                this.retryCount = 0;
+                this.updateRetryCount();
+                document.getElementById('retryBtn').disabled = false;
+                this.checkConnection();
+            }
+
+            toggleCachedContent() {
+                const cachedContent = document.getElementById('cachedContent');
+                const isVisible = cachedContent.style.display !== 'none';
+                
+                cachedContent.style.display = isVisible ? 'none' : 'block';
+                
+                const btn = document.getElementById('checkCacheBtn');
+                btn.textContent = isVisible ? '📱 Gecachte content bekijken' : '📱 Verberg gecachte content';
+            }
+
+            updateRetryCount() {
+                document.getElementById('retryCount').textContent = this.retryCount;
+            }
+
+            showMessage(text, type = 'info') {
+                // Maak een toast message
+                const toast = document.createElement('div');
+                toast.textContent = text;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 1000;
+                    animation: slideIn 0.3s ease;
+                `;
+
+                document.body.appendChild(toast);
+
+                // Verwijder na 3 seconden
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+        }
+
+        // Start de offline manager
+        document.addEventListener('DOMContentLoaded', () => {
+            new OfflineManager();
+        });
+
+        // CSS animatie voor toast
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
